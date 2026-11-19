@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee & Payroll Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .table-dark-custom { background-color: #0f172a; color: white; }
+        .btn-custom { border-radius: 6px; font-weight: 500; }
+        
+        #printArea { display: none; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            #printArea, #printArea * { visibility: visible !important; }
+            #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container my-4">
+    <!-- Header -->
+    <div class="card header-bg p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="fa-solid fa-users-gear me-2"></i>Employee & Payroll Management</h2>
+                <p class="mb-0 text-light opacity-75">රුක්මන් ඉංජිනියරින් (පෞද්ගලික) සමාගම - මාතර සහ වැලිගම ශාඛා</p>
+            </div>
+            <div class="no-print mt-3 mt-md-0 d-flex gap-2">
+                <a href="attendance.html" class="btn btn-outline-light btn-custom"><i class="fa-solid fa-calendar-days me-2"></i>Attendance Sheet</a>
+                <a href="salary.html" class="btn btn-outline-light btn-custom"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Salary Payslip</a>
+                <!-- Open Month Select Modal Button -->
+                <button class="btn btn-primary btn-custom" onclick="openPrintModal()"><i class="fa-solid fa-print me-2"></i>Print Salary List</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="card p-4 mb-4 no-print">
+        <h4 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user-plus me-2"></i><span id="formTitle">Add New Employee Details</span></h4>
+        <form id="payrollForm" onsubmit="saveEmployee(event)">
+            <input type="hidden" id="editKey" value="">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Employee ID *</label>
+                    <input type="text" id="empId" class="form-control" required placeholder="e.g. 1001">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Full Name *</label>
+                    <input type="text" id="empName" class="form-control" required placeholder="e.g. Saman Kumara">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Branch *</label>
+                    <select id="branch" class="form-select" required>
+                        <option value="Matara">Matara</option>
+                        <option value="Weligama">Weligama</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Bank Account Number (Optional)</label>
+                    <input type="text" id="bankAcc" class="form-control" placeholder="e.g. 800123456">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">WhatsApp Number (Optional)</label>
+                    <input type="text" id="whatsapp" class="form-control" placeholder="e.g. 0771234567">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Daily Basic Salary (LKR) *</label>
+                    <input type="number" id="basicSalary" class="form-control" step="0.01" required value="0">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Daily EPF Applicable Amount (LKR) (Optional)</label>
+                    <input type="number" id="epfSalary" class="form-control" step="0.01" placeholder="දිනක EPF මුදල (Optional)">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Allowances (LKR)</label>
+                    <input type="number" id="allowances" class="form-control" step="0.01" value="0">
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" class="btn btn-secondary btn-custom d-none" id="cancelBtn" onclick="resetForm()">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-custom" id="submitBtn"><i class="fa-solid fa-floppy-disk me-2"></i>Save Details</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Section -->
+    <div class="card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list me-2"></i>Employee Records (ID Ordered)</h4>
+            <div class="no-print">
+                <select id="filterBranch" class="form-select" onchange="renderTable()">
+                    <option value="All">All Branches</option>
+                    <option value="Matara">Matara Branch</option>
+                    <option value="Weligama">Weligama Branch</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark-custom">
+                    <tr>
+                        <th>ID</th>
+                        <th>NAME</th>
+                        <th>BRANCH</th>
+                        <th>BANK ACCOUNT</th>
+                        <th>WHATSAPP</th>
+                        <th>DAILY BASIC (LKR)</th>
+                        <th>DAILY EPF (LKR)</th>
+                        <th>ALLOWANCES (LKR)</th>
+                        <th class="no-print text-center">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody id="employeeTableBody">
+                    <!-- Dynamic Data -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MONTH SELECT MODAL -->
+<div class="modal fade no-print" id="printModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-calendar-days me-2"></i>Select Month for Salary List</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Select Month *</label>
+                    <select id="modalMonthSelect" class="form-select">
+                        <option value="January 2026">January 2026</option>
+                        <option value="February 2026">February 2026</option>
+                        <option value="March 2026">March 2026</option>
+                        <option value="April 2026">April 2026</option>
+                        <option value="May 2026">May 2026</option>
+                        <option value="June 2026">June 2026</option>
+                        <option value="July 2026">July 2026</option>
+                        <option value="August 2026" selected>August 2026</option>
+                        <option value="September 2026">September 2026</option>
+                        <option value="October 2026">October 2026</option>
+                        <option value="November 2026">November 2026</option>
+                        <option value="December 2026">December 2026</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-custom" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-custom" onclick="generateAndPrintSalaryList()"><i class="fa-solid fa-print me-2"></i>Print Now</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HIDDEN PRINT AREA -->
+<div id="printArea" class="p-4">
+    <div class="text-center mb-3">
+        <h3 class="fw-bold">රුක්මන් ඉංජිනියරින් (පෞද්ගලික) සමාගම</h3>
+        <h5 class="text-secondary">මාසික වැටුප් ලැයිස්තුව - <span id="printMonthTitle"></span></h5>
+    </div>
+    <table class="table table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th style="width: 10%;">ID</th>
+                <th style="width: 35%;">NAME</th>
+                <th style="width: 25%;">NET PAY SALARY (LKR)</th>
+                <th style="width: 30%;">SIGNATURE (අත්සන)</th>
+            </tr>
+        </thead>
+        <tbody id="printTableBody">
+            <!-- Print Data goes here -->
+        </tbody>
+    </table>
+</div>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Firebase SDK Integrations -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+    const firebaseConfig = {
+        databaseURL: "https://rukman-payroll-default-rtdb.firebaseio.com"
+    };
+    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const database = firebase.database();
+    const empRef = database.ref('employees');
+
+    let employees = {};
+
+    empRef.on('value', (snapshot) => {
+        employees = snapshot.val() || {};
+        renderTable();
+    });
+
+    function saveEmployee(event) {
+        event.preventDefault();
+        const id = document.getElementById('empId').value.trim();
+        const name = document.getElementById('empName').value.trim();
+        const branch = document.getElementById('branch').value;
+        const bankAcc = document.getElementById('bankAcc').value.trim() || '-';
+        const whatsapp = document.getElementById('whatsapp').value.trim() || '-';
+        const basic = parseFloat(document.getElementById('basicSalary').value) || 0;
+        const epfBasic = parseFloat(document.getElementById('epfSalary').value) || 0;
+        const allowances = parseFloat(document.getElementById('allowances').value) || 0;
+        const editKey = document.getElementById('editKey').value;
+
+        const empData = { id, name, branch, bankAcc, whatsapp, basic, dailyRate: basic, epfBasic, allowances };
+
+        if (!editKey) {
+            empRef.push(empData);
+        } else {
+            database.ref('employees/' + editKey).set(empData);
+        }
+        resetForm();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('employeeTableBody');
+        const filterBranch = document.getElementById('filterBranch').value;
+        tbody.innerHTML = '';
+
+        let empList = Object.keys(employees).map(key => ({
+            key: key,
+            ...employees[key]
+        }));
+
+        empList.sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+
+        if (filterBranch !== 'All') {
+            empList = empList.filter(e => e.branch === filterBranch);
+        }
+
+        if (empList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">කිසිදු දත්තයක් ඇතුළත් කර නොමැත.</td></tr>`;
+            return;
+        }
+
+        empList.forEach((emp) => {
+            const basicVal = parseFloat(emp.basic || emp.dailyRate || 0);
+            const epfVal = parseFloat(emp.epfBasic || 0);
+            const allowanceVal = parseFloat(emp.allowances || 0);
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${emp.id || ''}</strong></td>
+                    <td>${emp.name || ''}</td>
+                    <td><span class="badge ${emp.branch === 'Matara' ? 'bg-primary' : 'bg-info'}">${emp.branch || ''}</span></td>
+                    <td>${emp.bankAcc || '-'}</td>
+                    <td>${emp.whatsapp || '-'}</td>
+                    <td class="fw-semibold text-dark">${basicVal.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td class="fw-semibold text-primary">${epfVal.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td>${allowanceVal.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td class="no-print text-center">
+                        <button class="btn btn-sm btn-warning me-1" onclick="editEmployee('${emp.key}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteEmployee('${emp.key}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // Open Month Selection Modal
+    function openPrintModal() {
+        const myModal = new bootstrap.Modal(document.getElementById('printModal'));
+        myModal.show();
+    }
+
+    // Generate Print List with Net Salary from Firebase based on selected month
+    async function generateAndPrintSalaryList() {
+        const selectedMonthModalVal = document.getElementById('modalMonthSelect').value; // e.g., "August 2026"
+        document.getElementById('printMonthTitle').innerText = selectedMonthModalVal;
+        
+        const printTbody = document.getElementById('printTableBody');
+        printTbody.innerHTML = '';
+
+        let empList = Object.keys(employees).map(key => ({
+            key: key,
+            ...employees[key]
+        }));
+
+        empList.sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+
+        if (empList.length === 0) {
+            alert('මුද්‍රණය කිරීමට සේවක දත්ත නොමැත!');
+            return;
+        }
+
+        // Hide modal first using Bootstrap instance
+        const modalElement = document.getElementById('printModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        modalInstance.hide();
+
+        // Convert Month Name (e.g., "August 2026") to format "2026-08" to match database attendance keys
+        const parts = selectedMonthModalVal.split(' ');
+        const monthNameStr = parts[0]; 
+        const yearStr = parts[1];      
+        const dateObj = new Date(`${monthNameStr} 1, ${yearStr}`);
+        const mNum = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const monthCode = `${yearStr}-${mNum}`; // e.g., "2026-08"
+
+        // Fetch all attendance data from Firebase
+        const snapshot = await database.ref('attendance').once('value');
+        const allAttendance = snapshot.val() || {};
+
+        empList.forEach((emp) => {
+            const empIdStr = String(emp.id || emp.key).trim();
+            const attKey = `${empIdStr}_${monthCode}`; // e.g., "1001_2026-08"
+            const monthAtt = allAttendance[attKey] || {};
+
+            let workedDays = 0;
+            let totalOtHours = 0;
+            let totalAdvance = 0;
+            let totalLoan = 0;
+
+            Object.keys(monthAtt).forEach(dateStr => {
+                if (dateStr === 'monthlyAllowance') return;
+                const dayData = monthAtt[dateStr];
+                if (dayData.status === 'Present') {
+                    workedDays += 1;
+                } else if (dayData.status === 'Half Day') {
+                    workedDays += 0.5;
+                }
+                totalOtHours += parseFloat(dayData.ot || 0);
+                totalAdvance += parseFloat(dayData.advance || 0);
+                totalLoan += parseFloat(dayData.loan || 0);
+            });
+
+            const dailyRate = parseFloat(emp.basic || emp.dailyRate || 0);
+            const basicTotal = workedDays * dailyRate;
+            const hourlyRate = dailyRate > 0 ? (dailyRate / 8) : 0;
+            const otTotal = hourlyRate * totalOtHours;
+
+            let allowance = 0;
+            if (monthAtt.monthlyAllowance !== undefined && monthAtt.monthlyAllowance !== '') {
+                allowance = parseFloat(monthAtt.monthlyAllowance);
+            } else {
+                allowance = parseFloat(emp.allowances || 0);
+            }
+
+            const grossPay = basicTotal + otTotal + allowance;
+            const netSalary = grossPay - (totalAdvance + totalLoan);
+
+            printTbody.innerHTML += `
+                <tr>
+                    <td><strong>${empIdStr}</strong></td>
+                    <td>${emp.name || ''}</td>
+                    <td class="fw-semibold">${netSalary > 0 ? netSalary.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td style="height: 45px;"></td>
+                </tr>
+            `;
+        });
+
+        // Trigger browser print after a brief moment
+        setTimeout(() => {
+            window.print();
+        }, 300);
+    }
+
+    function editEmployee(key) {
+        const emp = employees[key];
+        document.getElementById('empId').value = emp.id || '';
+        document.getElementById('empName').value = emp.name || '';
+        document.getElementById('branch').value = emp.branch || 'Matara';
+        document.getElementById('bankAcc').value = emp.bankAcc === '-' ? '' : emp.bankAcc;
+        document.getElementById('whatsapp').value = emp.whatsapp === '-' ? '' : emp.whatsapp;
+        document.getElementById('basicSalary').value = emp.basic || emp.dailyRate || 0;
+        document.getElementById('epfSalary').value = emp.epfBasic || 0;
+        document.getElementById('allowances').value = emp.allowances || 0;
+        document.getElementById('editKey').value = key;
+
+        document.getElementById('formTitle').innerText = 'Edit Employee Details';
+        document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-arrows-rotate me-2"></i>Update Details';
+        document.getElementById('cancelBtn').classList.remove('d-none');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deleteEmployee(key) {
+        if (confirm('ඔබට විශ්වාසද මෙම සේවක තොරතුරු ඉවත් කිරීමට අවශ්‍ය බව?')) {
+            database.ref('employees/' + key).remove();
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('payrollForm').reset();
+        document.getElementById('editKey').value = '';
+        document.getElementById('formTitle').innerText = 'Add New Employee Details';
+        document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i>Save Details';
+        document.getElementById('cancelBtn').classList.add('d-none');
+    }
+</script>
+
+</body>
+</html>

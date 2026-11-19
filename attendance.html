@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Attendance & Monthly Allowances - Payroll App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .btn-custom { border-radius: 6px; font-weight: 500; }
+        .table-custom-header { background-color: #0f172a; color: white; }
+        @media print {
+            .no-print { display: none !important; }
+            .card { box-shadow: none; border: 1px solid #ccc; }
+            input, select { border: none !important; background: transparent !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4 my-4">
+    <!-- Header -->
+    <div class="card header-bg p-4 mb-4 no-print">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="fa-solid fa-calendar-days me-2"></i>Daily Attendance & Deductions</h2>
+                <p class="mb-0 text-light opacity-75">Matara & Weligama Branches</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 mt-md-0">
+                <a href="index.html" class="btn btn-outline-light btn-custom"><i class="fa-solid fa-arrow-left me-2"></i>Back to Registration</a>
+                <a href="salary.html" class="btn btn-outline-light btn-custom"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Salary Payslip</a>
+                <button class="btn btn-primary btn-custom" onclick="window.print()"><i class="fa-solid fa-print me-2"></i>Print Sheet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Details & Monthly Allowance Section -->
+    <div class="card p-4 mb-4 no-print">
+        <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-clock me-2"></i>Select Details & Monthly Allowance</h5>
+        <div class="row g-3 align-items-end">
+            <!-- Year, Month, Date Selection Dropdowns -->
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Year *</label>
+                <select id="attYear" class="form-select" onchange="onDateSelectionChange()">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Month *</label>
+                <select id="attMonth" class="form-select" onchange="onDateSelectionChange()">
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09" selected>September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Day (Optional)</label>
+                <select id="attDay" class="form-select" onchange="loadSheetData()">
+                    <option value="">All Days (Full Month)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Select Employee *</label>
+                <select id="attEmpSelect" class="form-select" onchange="loadSheetData()">
+                    <option value="">-- Choose Employee --</option>
+                </select>
+            </div>
+            <!-- Monthly Allowance Input -->
+            <div class="col-md-3">
+                <label class="form-label fw-semibold text-success">Monthly Allowance (LKR) *</label>
+                <input type="number" id="monthlyAllowanceInput" class="form-control border-success" placeholder="0.00" step="0.01" onchange="saveMonthlyAllowance()">
+            </div>
+        </div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-12 d-flex justify-content-end gap-2">
+                <button class="btn btn-warning btn-custom text-dark fw-bold px-4" onclick="autoFillFullMonth()">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Auto-Fill Month
+                </button>
+                <button class="btn btn-success btn-custom fw-bold px-4" onclick="saveAllRows()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Table -->
+    <div class="card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h4 class="fw-bold text-dark mb-0">Attendance & Deductions Sheet</h4>
+            <div class="d-flex gap-2 flex-wrap">
+                <span class="badge bg-info text-dark fs-6 p-2">Total Days: <span id="totDaysBadge">0</span></span>
+                <span class="badge bg-success fs-6 p-2">Total OT: <span id="totOtBadge">0.0</span> Hrs</span>
+                <span class="badge bg-warning text-dark fs-6 p-2">Total Advance: <span id="totAdvBadge">0.00</span> LKR</span>
+                <span class="badge bg-danger fs-6 p-2">Total Loan: <span id="totLoanBadge">0.00</span> LKR</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center">
+                <thead class="table-custom-header">
+                    <tr>
+                        <th style="width: 120px;">DATE</th>
+                        <th style="width: 140px;">IN TIME</th>
+                        <th style="width: 140px;">OUT TIME</th>
+                        <th style="width: 140px;">STATUS</th>
+                        <th style="width: 120px;">OT HOURS</th>
+                        <th style="width: 140px;">ADVANCE (LKR)</th>
+                        <th style="width: 140px;">LOAN (LKR)</th>
+                        <th class="no-print" style="width: 90px;">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTbody">
+                    <tr><td colspan="8" class="text-muted py-4">කරුණාකර අවුරුද්ද, මාසය සහ සේවකයා තෝරන්න.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="text-end mt-3 no-print">
+            <button class="btn btn-success btn-lg fw-bold px-5" onclick="saveAllRows()">
+                <i class="fa-solid fa-floppy-disk me-2"></i>Save Attendance Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+    const firebaseConfig = {
+        databaseURL: "https://rukman-payroll-default-rtdb.firebaseio.com"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const database = firebase.database();
+
+    let employeesData = {};
+    let savedAttendanceData = {};
+
+    // Initialize current Year and Month on load
+    const now = new Date();
+    document.getElementById('attYear').value = now.getFullYear();
+    document.getElementById('attMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+    updateDayDropdown();
+
+    database.ref('/').on('value', (snapshot) => {
+        const rootData = snapshot.val() || {};
+        employeesData = rootData.employees || rootData.employee || rootData.EmpList || {};
+        populateEmpDropdown();
+    });
+
+    database.ref('attendance').on('value', (snapshot) => {
+        savedAttendanceData = snapshot.val() || {};
+        loadSheetData();
+    });
+
+    function populateEmpDropdown() {
+        const select = document.getElementById('attEmpSelect');
+        const currVal = select.value;
+        select.innerHTML = '<option value="">-- Choose Employee --</option>';
+
+        let sortedList = Object.keys(employeesData).map(k => ({ key: k, ...employeesData[k] }));
+        sortedList.sort((a, b) => {
+            const idA = parseInt(a.id || a.key || 0);
+            const idB = parseInt(b.id || b.key || 0);
+            return idA - idB;
+        });
+
+        sortedList.forEach(emp => {
+            const empIdStr = String(emp.id || emp.key).trim();
+            const empName = emp.name || emp.fullName || 'Unknown';
+            const empBranch = emp.branch || '';
+            select.innerHTML += `<option value="${empIdStr}">${empName} (${empIdStr}) - ${empBranch}</option>`;
+        });
+
+        select.value = currVal;
+    }
+
+    function getSelectedMonthStr() {
+        const year = document.getElementById('attYear').value;
+        const month = document.getElementById('attMonth').value;
+        return `${year}-${month}`;
+    }
+
+    function updateDayDropdown() {
+        const year = document.getElementById('attYear').value;
+        const month = document.getElementById('attMonth').value;
+        const daySelect = document.getElementById('attDay');
+        const currentSelectedDay = daySelect.value;
+
+        daySelect.innerHTML = '<option value="">All Days (Full Month)</option>';
+
+        if (!year || !month) return;
+
+        const daysInMonth = new Date(year, month, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dayStr = String(d).padStart(2, '0');
+            daySelect.innerHTML += `<option value="${dayStr}">${d} (${dayStr})</option>`;
+        }
+
+        daySelect.value = currentSelectedDay;
+    }
+
+    function onDateSelectionChange() {
+        updateDayDropdown();
+        loadSheetData();
+    }
+
+    function loadSheetData() {
+        const monthStr = getSelectedMonthStr();
+        const selectedDay = document.getElementById('attDay').value;
+        const empId = document.getElementById('attEmpSelect').value;
+        const tbody = document.getElementById('attendanceTbody');
+
+        if (!monthStr || !empId) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted py-4">කරුණාකර අවුරුද්ද, මාසය සහ සේවකයා තෝරන්න.</td></tr>';
+            document.getElementById('monthlyAllowanceInput').value = '';
+            resetBadges();
+            return;
+        }
+
+        const attKey = `${empId}_${monthStr}`;
+        const currentEmpAtt = savedAttendanceData[attKey] || {};
+
+        const monthlyAllowVal = currentEmpAtt.monthlyAllowance || 0;
+        document.getElementById('monthlyAllowanceInput').value = monthlyAllowVal > 0 ? monthlyAllowVal : '';
+
+        const [year, monthNum] = monthStr.split('-');
+        const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+        tbody.innerHTML = '';
+
+        let totDays = 0;
+        let totOt = 0;
+        let totAdv = 0;
+        let totLoan = 0;
+
+        let startDay = 1;
+        let endDay = daysInMonth;
+
+        if (selectedDay) {
+            startDay = parseInt(selectedDay);
+            endDay = parseInt(selectedDay);
+        }
+
+        for (let day = startDay; day <= endDay; day++) {
+            const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+            const dayRecord = currentEmpAtt[dateStr] || {};
+
+            const inTime = dayRecord.inTime || '';
+            const outTime = dayRecord.outTime || '';
+            const status = dayRecord.status || 'Present';
+            const ot = parseFloat(dayRecord.ot || 0);
+            const advance = parseFloat(dayRecord.advance || 0);
+            const loan = parseFloat(dayRecord.loan || 0);
+
+            if (status !== 'Absent' && (inTime || status === 'Present')) {
+                totDays += (status === 'Half Day' ? 0.5 : 1);
+            }
+
+            totOt += ot;
+            totAdv += advance;
+            totLoan += loan;
+
+            tbody.innerHTML += `
+                <tr id="row_${dateStr}">
+                    <td class="fw-bold">${dateStr}</td>
+                    <td><input type="time" class="form-control form-control-sm text-center" value="${inTime}" onchange="updateRow('${dateStr}')"></td>
+                    <td><input type="time" class="form-control form-control-sm text-center" value="${outTime}" onchange="updateRow('${dateStr}')"></td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="updateRow('${dateStr}')">
+                            <option value="Present" ${status === 'Present' ? 'selected' : ''}>Present</option>
+                            <option value="Half Day" ${status === 'Half Day' ? 'selected' : ''}>Half Day</option>
+                            <option value="Absent" ${status === 'Absent' ? 'selected' : ''}>Absent</option>
+                        </select>
+                    </td>
+                    <td><span class="badge bg-secondary fs-6" id="ot_${dateStr}">${ot.toFixed(1)} Hrs</span></td>
+                    <td><input type="number" class="form-control form-control-sm text-center" value="${advance || ''}" placeholder="0" step="0.01" onchange="updateRow('${dateStr}')"></td>
+                    <td><input type="number" class="form-control form-control-sm text-center" value="${loan || ''}" placeholder="0" step="0.01" onchange="updateRow('${dateStr}')"></td>
+                    <td class="no-print">
+                        <button class="btn btn-sm btn-outline-danger" onclick="clearRow('${dateStr}')" title="Clear Row"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // මුළු මාසයම බැලීමේදී මුළු එකතුව පෙන්වීමට සම්පූර්ණ මාසයේ දත්ත හරහා ගණනය කිරීම
+        if (selectedDay) {
+            let fullTotDays = 0;
+            let fullTotOt = 0;
+            let fullTotAdv = 0;
+            let fullTotLoan = 0;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dStr = `${monthStr}-${String(d).padStart(2, '0')}`;
+                const rec = currentEmpAtt[dStr] || {};
+                const rIn = rec.inTime || '';
+                const rSt = rec.status || 'Present';
+                if (rSt !== 'Absent' && (rIn || rSt === 'Present')) {
+                    fullTotDays += (rSt === 'Half Day' ? 0.5 : 1);
+                }
+                fullTotOt += parseFloat(rec.ot || 0);
+                fullTotAdv += parseFloat(rec.advance || 0);
+                fullTotLoan += parseFloat(rec.loan || 0);
+            }
+            document.getElementById('totDaysBadge').innerText = fullTotDays;
+            document.getElementById('totOtBadge').innerText = fullTotOt.toFixed(1);
+            document.getElementById('totAdvBadge').innerText = fullTotAdv.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('totLoanBadge').innerText = fullTotLoan.toLocaleString('en-US', {minimumFractionDigits: 2});
+        } else {
+            document.getElementById('totDaysBadge').innerText = totDays;
+            document.getElementById('totOtBadge').innerText = totOt.toFixed(1);
+            document.getElementById('totAdvBadge').innerText = totAdv.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('totLoanBadge').innerText = totLoan.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+    }
+
+    function saveMonthlyAllowance() {
+        const monthStr = getSelectedMonthStr();
+        const empId = document.getElementById('attEmpSelect').value;
+        if (!monthStr || !empId) return;
+
+        const attKey = `${empId}_${monthStr}`;
+        const monthlyAllowance = parseFloat(document.getElementById('monthlyAllowanceInput').value) || 0;
+
+        database.ref(`attendance/${attKey}/monthlyAllowance`).set(monthlyAllowance);
+    }
+
+    function autoFillFullMonth() {
+        const monthStr = getSelectedMonthStr();
+        const empId = document.getElementById('attEmpSelect').value;
+
+        if (!monthStr || !empId) {
+            alert('කරුණාකර පළමුව Year, Month සහ Employee තෝරන්න!');
+            return;
+        }
+
+        if (!confirm('මුළු මාසයටම 08:00 - 17:30 වේලාවන් ඇතුළත් කිරීමට අවශ්‍යද?')) return;
+
+        const [year, monthNum] = monthStr.split('-');
+        const daysInMonth = new Date(year, monthNum, 0).getDate();
+        const attKey = `${empId}_${monthStr}`;
+
+        let updates = {};
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+            updates[`attendance/${attKey}/${dateStr}/inTime`] = '08:00';
+            updates[`attendance/${attKey}/${dateStr}/outTime`] = '17:30';
+            updates[`attendance/${attKey}/${dateStr}/status`] = 'Present';
+            updates[`attendance/${attKey}/${dateStr}/ot`] = 0;
+        }
+
+        database.ref().update(updates).then(() => {
+            alert('සාර්ථකව Auto-Fill කර Save විය!');
+        });
+    }
+
+    function updateRow(dateStr) {
+        const monthStr = getSelectedMonthStr();
+        const empId = document.getElementById('attEmpSelect').value;
+        const attKey = `${empId}_${monthStr}`;
+
+        const row = document.getElementById(`row_${dateStr}`);
+        if (!row) return;
+
+        const inputs = row.getElementsByTagName('input');
+        const select = row.getElementsByTagName('select')[0];
+
+        let inTime = inputs[0].value;
+        let outTime = inputs[1].value;
+        const status = select.value;
+        const advance = parseFloat(inputs[2].value) || 0;
+        const loan = parseFloat(inputs[3].value) || 0;
+
+        let ot = 0;
+
+        if (status === 'Absent') {
+            inTime = '';
+            outTime = '';
+            inputs[0].value = '';
+            inputs[1].value = '';
+            ot = 0;
+        } else if (status === 'Present' && inTime && outTime) {
+            const [inH, inM] = inTime.split(':').map(Number);
+            const [outH, outM] = outTime.split(':').map(Number);
+
+            const inMin = inH * 60 + inM;
+            let outMin = outH * 60 + outM;
+
+            if (outMin < inMin) {
+                outMin += 24 * 60;
+            }
+
+            const standardInMin = 8 * 60;
+            const standardOutMin = 17 * 60 + 30;
+
+            let morningOtMin = 0;
+            if (inMin < standardInMin) {
+                morningOtMin = standardInMin - inMin;
+            }
+
+            let eveningOtMin = 0;
+            if (outMin > standardOutMin) {
+                eveningOtMin = outMin - standardOutMin;
+            }
+
+            ot = (morningOtMin + eveningOtMin) / 60;
+        }
+
+        database.ref(`attendance/${attKey}/${dateStr}`).update({
+            inTime,
+            outTime,
+            status,
+            ot: parseFloat(ot.toFixed(2)),
+            advance,
+            loan
+        });
+    }
+
+    function saveAllRows() {
+        const monthStr = getSelectedMonthStr();
+        const empId = document.getElementById('attEmpSelect').value;
+
+        if (!monthStr || !empId) {
+            alert('කරුණාකර Year, Month සහ Employee තෝරන්න!');
+            return;
+        }
+
+        const [year, monthNum] = monthStr.split('-');
+        const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+            updateRow(dateStr);
+        }
+
+        saveMonthlyAllowance();
+        alert('සියලුම දත්ත සාර්ථකව Save විය!');
+    }
+
+    function clearRow(dateStr) {
+        const monthStr = getSelectedMonthStr();
+        const empId = document.getElementById('attEmpSelect').value;
+        const attKey = `${empId}_${monthStr}`;
+
+        if (confirm(`${dateStr} දින දත්ත ඉවත් කිරීමට අවශ්‍යද?`)) {
+            database.ref(`attendance/${attKey}/${dateStr}`).remove();
+        }
+    }
+
+    function resetBadges() {
+        document.getElementById('totDaysBadge').innerText = '0';
+        document.getElementById('totOtBadge').innerText = '0.0';
+        document.getElementById('totAdvBadge').innerText = '0.00';
+        document.getElementById('totLoanBadge').innerText = '0.00';
+    }
+</script>
+
+</body>
+</html>
