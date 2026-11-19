@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Attendance & Monthly Allowances - Payroll App</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Daily Attendance & Monthly Allowances - Payroll App (Offline)</title>
+    <link href="https://jsdelivr.net" rel="stylesheet">
+    <link href="https://cloudflare.com" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
@@ -27,7 +27,7 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap">
             <div>
                 <h2 class="fw-bold mb-1"><i class="fa-solid fa-calendar-days me-2"></i>Daily Attendance & Deductions</h2>
-                <p class="mb-0 text-light opacity-75">Matara & Weligama Branches</p>
+                <p class="mb-0 text-light opacity-75">Matara & Weligama Branches (Offline Desktop)</p>
             </div>
             <div class="d-flex gap-2 mt-3 mt-md-0">
                 <a href="index.html" class="btn btn-outline-light btn-custom"><i class="fa-solid fa-arrow-left me-2"></i>Back to Registration</a>
@@ -41,7 +41,6 @@
     <div class="card p-4 mb-4 no-print">
         <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-clock me-2"></i>Select Details & Monthly Allowance</h5>
         <div class="row g-3 align-items-end">
-            <!-- Year, Month, Date Selection Dropdowns -->
             <div class="col-md-2">
                 <label class="form-label fw-semibold">Year *</label>
                 <select id="attYear" class="form-select" onchange="onDateSelectionChange()">
@@ -63,9 +62,9 @@
                     <option value="06">June</option>
                     <option value="07">July</option>
                     <option value="08">August</option>
-                    <option value="09" selected>September</option>
+                    <option value="09">September</option>
                     <option value="10">October</option>
-                    <option value="11">November</option>
+                    <option value="11" selected>November</option>
                     <option value="12">December</option>
                 </select>
             </div>
@@ -81,7 +80,6 @@
                     <option value="">-- Choose Employee --</option>
                 </select>
             </div>
-            <!-- Monthly Allowance Input -->
             <div class="col-md-3">
                 <label class="form-label fw-semibold text-success">Monthly Allowance (LKR) *</label>
                 <input type="number" id="monthlyAllowanceInput" class="form-control border-success" placeholder="0.00" step="0.01" onchange="saveMonthlyAllowance()">
@@ -98,7 +96,6 @@
             </div>
         </div>
     </div>
-
     <!-- Attendance Table -->
     <div class="card p-4">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -110,7 +107,6 @@
                 <span class="badge bg-danger fs-6 p-2">Total Loan: <span id="totLoanBadge">0.00</span> LKR</span>
             </div>
         </div>
-
         <div class="table-responsive">
             <table class="table table-bordered align-middle text-center">
                 <thead class="table-custom-header">
@@ -138,39 +134,22 @@
     </div>
 </div>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
 <script>
-    const firebaseConfig = {
-        databaseURL: "https://rukman-payroll-default-rtdb.firebaseio.com"
-    };
+    // Offline LocalStorage Database
+    let employeesData = JSON.parse(localStorage.getItem('offline_employees')) || {};
+    let savedAttendanceData = JSON.parse(localStorage.getItem('offline_attendance')) || {};
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+    function saveAttendanceStorage() {
+        localStorage.setItem('offline_attendance', JSON.stringify(savedAttendanceData));
+        loadSheetData();
     }
-    const database = firebase.database();
-
-    let employeesData = {};
-    let savedAttendanceData = {};
 
     // Initialize current Year and Month on load
     const now = new Date();
     document.getElementById('attYear').value = now.getFullYear();
     document.getElementById('attMonth').value = String(now.getMonth() + 1).padStart(2, '0');
     updateDayDropdown();
-
-    database.ref('/').on('value', (snapshot) => {
-        const rootData = snapshot.val() || {};
-        employeesData = rootData.employees || rootData.employee || rootData.EmpList || {};
-        populateEmpDropdown();
-    });
-
-    database.ref('attendance').on('value', (snapshot) => {
-        savedAttendanceData = snapshot.val() || {};
-        loadSheetData();
-    });
+    populateEmpDropdown();
 
     function populateEmpDropdown() {
         const select = document.getElementById('attEmpSelect');
@@ -199,7 +178,6 @@
         const month = document.getElementById('attMonth').value;
         return `${year}-${month}`;
     }
-
     function updateDayDropdown() {
         const year = document.getElementById('attYear').value;
         const month = document.getElementById('attMonth').value;
@@ -301,8 +279,6 @@
                 </tr>
             `;
         }
-
-        // මුළු මාසයම බැලීමේදී මුළු එකතුව පෙන්වීමට සම්පූර්ණ මාසයේ දත්ත හරහා ගණනය කිරීම
         if (selectedDay) {
             let fullTotDays = 0;
             let fullTotOt = 0;
@@ -338,9 +314,10 @@
         if (!monthStr || !empId) return;
 
         const attKey = `${empId}_${monthStr}`;
-        const monthlyAllowance = parseFloat(document.getElementById('monthlyAllowanceInput').value) || 0;
+        if (!savedAttendanceData[attKey]) savedAttendanceData[attKey] = {};
+        savedAttendanceData[attKey].monthlyAllowance = parseFloat(document.getElementById('monthlyAllowanceInput').value) || 0;
 
-        database.ref(`attendance/${attKey}/monthlyAllowance`).set(monthlyAllowance);
+        saveAttendanceStorage();
     }
 
     function autoFillFullMonth() {
@@ -358,22 +335,22 @@
         const daysInMonth = new Date(year, monthNum, 0).getDate();
         const attKey = `${empId}_${monthStr}`;
 
-        let updates = {};
+        if (!savedAttendanceData[attKey]) savedAttendanceData[attKey] = {};
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-            updates[`attendance/${attKey}/${dateStr}/inTime`] = '08:00';
-            updates[`attendance/${attKey}/${dateStr}/outTime`] = '17:30';
-            updates[`attendance/${attKey}/${dateStr}/status`] = 'Present';
-            updates[`attendance/${attKey}/${dateStr}/ot`] = 0;
+            if (!savedAttendanceData[attKey][dateStr]) savedAttendanceData[attKey][dateStr] = {};
+            savedAttendanceData[attKey][dateStr].inTime = '08:00';
+            savedAttendanceData[attKey][dateStr].outTime = '17:30';
+            savedAttendanceData[attKey][dateStr].status = 'Present';
+            savedAttendanceData[attKey][dateStr].ot = 0;
         }
 
-        database.ref().update(updates).then(() => {
-            alert('සාර්ථකව Auto-Fill කර Save විය!');
-        });
+        saveAttendanceStorage();
+        alert('සාර්ථකව Auto-Fill කර Save විය!');
     }
 
-    function updateRow(dateStr) {
+    function updateRow(dateStr, skipRender = false) {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
         const attKey = `${empId}_${monthStr}`;
@@ -425,14 +402,19 @@
             ot = (morningOtMin + eveningOtMin) / 60;
         }
 
-        database.ref(`attendance/${attKey}/${dateStr}`).update({
+        if (!savedAttendanceData[attKey]) savedAttendanceData[attKey] = {};
+        savedAttendanceData[attKey][dateStr] = {
             inTime,
             outTime,
             status,
             ot: parseFloat(ot.toFixed(2)),
             advance,
             loan
-        });
+        };
+
+        if (!skipRender) {
+            saveAttendanceStorage();
+        }
     }
 
     function saveAllRows() {
@@ -449,7 +431,7 @@
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-            updateRow(dateStr);
+            updateRow(dateStr, true);
         }
 
         saveMonthlyAllowance();
@@ -462,7 +444,10 @@
         const attKey = `${empId}_${monthStr}`;
 
         if (confirm(`${dateStr} දින දත්ත ඉවත් කිරීමට අවශ්‍යද?`)) {
-            database.ref(`attendance/${attKey}/${dateStr}`).remove();
+            if (savedAttendanceData[attKey]) {
+                delete savedAttendanceData[attKey][dateStr];
+                saveAttendanceStorage();
+            }
         }
     }
 
