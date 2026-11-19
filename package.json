@@ -1,0 +1,22 @@
+{
+  "name": "rukman-payroll-desktop",
+  "version": "1.0.0",
+  "description": "Rukman Engineering Offline Payroll Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.nuvialabs.rukmanpayroll",
+    "productName": "RukmanPayroll",
+    "win": {
+      "target": "portable",
+      "icon": "logo.ico"
+    }
+  }
+}
