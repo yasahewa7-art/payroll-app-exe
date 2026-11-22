@@ -2,25 +2,29 @@ const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 function createWindow() {
-  const win = new BrowserWindow({
+  const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     icon: path.join(__dirname, 'logo.ico'),
-    autoHideMenuBar: true,
+    autoHideMenuBar: true, // උඩ තියෙන File/Edit menu bar එක හංගන්න
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
+      nodeIntegration: true,
+      contextIsolation: false
     }
   });
 
-  // මෘදුකාංගය ආරම්භ වන විට NUVIA Labs Splash Screen සහිත main.html විවෘත වේ
-  win.loadFile('main.html');
+  mainWindow.maximize(); // App එක open වෙද්දීම Full Screen වෙන්න
+  mainWindow.loadFile('index.html');
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  app.on('activate', function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', function () {
+  if (process.platform !== 'darwin') app.quit();
 });
