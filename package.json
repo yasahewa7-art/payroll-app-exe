@@ -12,8 +12,7 @@
     "appId": "com.nuvialabs.rukmanpayroll",
     "productName": "Rukman Payroll System",
     "win": {
-      "target": "nsis",
-      "icon": "logo.ico"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
