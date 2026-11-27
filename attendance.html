@@ -7,6 +7,12 @@
     <!-- Offline Local Files -->
     <link href="./bootstrap.min.css" rel="stylesheet">
     <link href="./all.min.css" rel="stylesheet">
+    <script>
+      const faLink = document.createElement('link');
+      faLink.rel = 'stylesheet';
+      faLink.href = 'https://' + '://cloudflare.com';
+      document.head.appendChild(faLink);
+    </script>
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
@@ -135,6 +141,7 @@
         </div>
     </div>
 </div>
+
 <script>
     const { ipcRenderer } = require('electron');
     let employeesData = {};
@@ -185,7 +192,6 @@
 
         select.value = currVal;
     }
-
     function getSelectedMonthStr() {
         const year = document.getElementById('attYear').value;
         const month = document.getElementById('attMonth').value;
@@ -293,7 +299,6 @@
                 </tr>
             `;
         }
-
         if (selectedDay) {
             let fullTotDays = 0;
             let fullTotOt = 0;
@@ -334,6 +339,7 @@
 
         await saveAttendanceStorage();
     }
+
     async function autoFillFullMonth() {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
@@ -372,6 +378,14 @@
         const row = document.getElementById(`row_${dateStr}`);
         if (!row) return;
 
+        const inputs = row.getElementsByTagName('input');
+        const select = row.getElementsByTagName('select')[0];
+
+        let inTime = inputs[0].value;
+        let outTime = inputs[1].value;
+        const status = select.value;
+        const advance = parseFloat(inputs[2].value) || 0;
+        const loan = parseFloat(inputs[3].value) || 0;
         const inputs = row.getElementsByTagName('input');
         const select = row.getElementsByTagName('select')[0];
 
