@@ -7,9 +7,6 @@
     <!-- Offline Local Files -->
     <link href="./bootstrap.min.css" rel="stylesheet">
     <link href="./all.min.css" rel="stylesheet">
-    <!-- Online Fallback Links -->
-    <link href="https://jsdelivr.net" rel="stylesheet">
-    <link href="https://cloudflare.com" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
@@ -100,6 +97,7 @@
             </div>
         </div>
     </div>
+
     <!-- Attendance Table -->
     <div class="card p-4">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -137,23 +135,34 @@
         </div>
     </div>
 </div>
-
 <script>
-    // Offline LocalStorage Database
-    let employeesData = JSON.parse(localStorage.getItem('offline_employees')) || {};
-    let savedAttendanceData = JSON.parse(localStorage.getItem('offline_attendance')) || {};
+    const { ipcRenderer } = require('electron');
+    let employeesData = {};
+    let savedAttendanceData = {};
 
-    function saveAttendanceStorage() {
-        localStorage.setItem('offline_attendance', JSON.stringify(savedAttendanceData));
+    async function initAttendanceData() {
+        const loadedEmp = await ipcRenderer.invoke('load-data', 'employees');
+        employeesData = Array.isArray(loadedEmp) ? {} : (loadedEmp || {});
+
+        const loadedAtt = await ipcRenderer.invoke('load-data', 'attendance');
+        savedAttendanceData = Array.isArray(loadedAtt) ? {} : (loadedAtt || {});
+
+        const now = new Date();
+        document.getElementById('attYear').value = now.getFullYear();
+        document.getElementById('attMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+        updateDayDropdown();
+        populateEmpDropdown();
+    }
+
+    async function saveAttendanceStorage() {
+        const result = await ipcRenderer.invoke('save-data', 'attendance', savedAttendanceData);
+        if (!result.success) {
+            alert('දත්ත සුරැකීමේදී දෝෂයක් ඇති විය: ' + result.error);
+        }
         loadSheetData();
     }
 
-    // Initialize current Year and Month on load
-    const now = new Date();
-    document.getElementById('attYear').value = now.getFullYear();
-    document.getElementById('attMonth').value = String(now.getMonth() + 1).padStart(2, '0');
-    updateDayDropdown();
-    populateEmpDropdown();
+    initAttendanceData();
 
     function populateEmpDropdown() {
         const select = document.getElementById('attEmpSelect');
@@ -206,6 +215,7 @@
         updateDayDropdown();
         loadSheetData();
     }
+
     function loadSheetData() {
         const monthStr = getSelectedMonthStr();
         const selectedDay = document.getElementById('attDay').value;
@@ -283,6 +293,7 @@
                 </tr>
             `;
         }
+
         if (selectedDay) {
             let fullTotDays = 0;
             let fullTotOt = 0;
@@ -311,7 +322,8 @@
             document.getElementById('totLoanBadge').innerText = totLoan.toLocaleString('en-US', {minimumFractionDigits: 2});
         }
     }
-    function saveMonthlyAllowance() {
+
+    async function saveMonthlyAllowance() {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
         if (!monthStr || !empId) return;
@@ -320,10 +332,9 @@
         if (!savedAttendanceData[attKey]) savedAttendanceData[attKey] = {};
         savedAttendanceData[attKey].monthlyAllowance = parseFloat(document.getElementById('monthlyAllowanceInput').value) || 0;
 
-        saveAttendanceStorage();
+        await saveAttendanceStorage();
     }
-
-    function autoFillFullMonth() {
+    async function autoFillFullMonth() {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
 
@@ -349,11 +360,11 @@
             savedAttendanceData[attKey][dateStr].ot = 0;
         }
 
-        saveAttendanceStorage();
+        await saveAttendanceStorage();
         alert('සාර්ථකව Auto-Fill කර Save විය!');
     }
 
-    function updateRow(dateStr, skipRender = false) {
+    async function updateRow(dateStr, skipRender = false) {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
         const attKey = `${empId}_${monthStr}`;
@@ -416,11 +427,11 @@
         };
 
         if (!skipRender) {
-            saveAttendanceStorage();
+            await saveAttendanceStorage();
         }
     }
 
-    function saveAllRows() {
+    async function saveAllRows() {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
 
@@ -434,14 +445,14 @@
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-            updateRow(dateStr, true);
+            await updateRow(dateStr, true);
         }
 
-        saveMonthlyAllowance();
+        await saveMonthlyAllowance();
         alert('සියලුම දත්ත සාර්ථකව Save විය!');
     }
 
-    function clearRow(dateStr) {
+    async function clearRow(dateStr) {
         const monthStr = getSelectedMonthStr();
         const empId = document.getElementById('attEmpSelect').value;
         const attKey = `${empId}_${monthStr}`;
@@ -449,7 +460,7 @@
         if (confirm(`${dateStr} දින දත්ත ඉවත් කිරීමට අවශ්‍යද?`)) {
             if (savedAttendanceData[attKey]) {
                 delete savedAttendanceData[attKey][dateStr];
-                saveAttendanceStorage();
+                await saveAttendanceStorage();
             }
         }
     }
