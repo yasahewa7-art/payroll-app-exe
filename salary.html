@@ -4,14 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Salary Payslip Generator - Rukman Payroll (Offline)</title>
-    <!-- Offline Local Files -->
     <link href="./bootstrap.min.css" rel="stylesheet">
     <link href="./all.min.css" rel="stylesheet">
     <script src="./html2canvas.min.js"></script>
-    <!-- Online Fallback Links -->
-    <link href="https://jsdelivr.net" rel="stylesheet">
-    <link href="https://cloudflare.com" rel="stylesheet">
-    <script src="https://cloudflare.com"></script>
     <style>
         body { background-color: #f1f5f9; font-family: 'Segoe UI', Arial, sans-serif; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
@@ -79,7 +74,6 @@
             border-bottom: 1px solid #334155;
             font-size: 0.75rem;
         }
-        
         .designer-footer {
             border-top: 1px solid #cbd5e1;
             padding: 6px 12px;
@@ -92,9 +86,7 @@
             width: auto;
             object-fit: contain;
         }
-
         .print-header-only { display: none; }
-
         .summary-sheet-card {
             background: #ffffff;
             border-radius: 12px;
@@ -251,6 +243,7 @@
                 </div>
             </div>
         </div>
+
         <table class="table table-bordered payslip-table mb-0 align-middle">
             <thead>
                 <tr>
@@ -292,7 +285,6 @@
                 </tr>
             </tbody>
         </table>
-
         <div class="p-2 px-3">
             <div class="row align-items-center">
                 <div class="col-6">
@@ -350,6 +342,7 @@
             </div>
         </div>
     </div>
+
     <!-- SUMMARY SHEET SECTION (A4 Landscape Print) -->
     <div class="summary-sheet-card my-4" id="summarySheetCard">
         <div class="print-header-only px-2 py-1">
@@ -386,7 +379,6 @@
                 </button>
             </div>
         </div>
-
         <div class="table-responsive mb-3">
             <table class="table summary-table align-middle">
                 <thead>
@@ -429,7 +421,9 @@
         </div>
     </div>
 </div>
+
 <script>
+    const { ipcRenderer } = require('electron');
     const SYSTEM_PASSWORD = "rukman123";
     let isSinhalaSummary = false;
 
@@ -466,7 +460,6 @@
         sessionStorage.removeItem("isPayrollLoggedIn");
         location.reload();
     }
-
     function toggleSummarySheetView() {
         const summaryCard = document.getElementById('summarySheetCard');
         const payslipCard = document.getElementById('payslipCard');
@@ -547,6 +540,7 @@
             `;
         }
     }
+
     function getLocalizedText(name, branch) {
         const branchMap = {
             "Matara": "මාතර",
@@ -572,18 +566,25 @@
         const sinhalaName = nameMap[name] || name;
         return { name: sinhalaName, branch: sinhalaBranch };
     }
-
     let appInitialized = false;
     let employeesData = {};
     let attendanceData = {};
 
-    function initOfflineApp() {
+    // D: / C: Drive එකෙන් Data Load කිරීම
+    async function loadDataFromDrive() {
+        const loadedEmp = await ipcRenderer.invoke('load-data', 'employees');
+        employeesData = Array.isArray(loadedEmp) ? {} : (loadedEmp || {});
+
+        const loadedAtt = await ipcRenderer.invoke('load-data', 'attendance');
+        attendanceData = Array.isArray(loadedAtt) ? {} : (loadedAtt || {});
+    }
+
+    async function initOfflineApp() {
         if (appInitialized) return;
 
         document.getElementById('payMonth').value = new Date().toISOString().slice(0, 7);
 
-        employeesData = JSON.parse(localStorage.getItem('offline_employees')) || {};
-        attendanceData = JSON.parse(localStorage.getItem('offline_attendance')) || {};
+        await loadDataFromDrive();
 
         populateEmpDropdown();
         renderAllData();
@@ -611,9 +612,8 @@
         select.value = currVal;
     }
 
-    function onMonthOrEmpChange() {
-        employeesData = JSON.parse(localStorage.getItem('offline_employees')) || {};
-        attendanceData = JSON.parse(localStorage.getItem('offline_attendance')) || {};
+    async function onMonthOrEmpChange() {
+        await loadDataFromDrive();
         renderAllData();
     }
 
@@ -657,7 +657,6 @@
             resetDisplay();
             return;
         }
-
         const dailyRate = parseFloat(empObj.basic || empObj.dailyRate || 0);
         const rawEpfRate = empObj.epfBasic || empObj.epfDailyRate;
         const epfDailyRate = (rawEpfRate !== undefined && rawEpfRate !== null && rawEpfRate !== '' && parseFloat(rawEpfRate) > 0) ? parseFloat(rawEpfRate) : 0;
@@ -779,7 +778,6 @@
             return;
         }
 
-        // ID අනුපිළිවෙලට සකස් කිරීම
         keys.sort((a, b) => Number(employeesData[a].id || 0) - Number(employeesData[b].id || 0));
 
         let gBasic = 0, gOt = 0, gAllow = 0, gSpecialAllow = 0, gGross = 0;
@@ -834,7 +832,6 @@
             gBasic += finalBasicTotal; gOt += otTotal; gAllow += baseAllowance; gSpecialAllow += specialAllowanceExtra;
             gGross += grossPay; gAdv += advance; gLoan += loanTotal; gEpf += epf8;
             gDed += totalDed; gNet += netPay;
-
             const localized = getLocalizedText(emp.name || '-', emp.branch || '-');
             const daysLabelText = isSinhalaSummary ? "දින" : "Days";
 
