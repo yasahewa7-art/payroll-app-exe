@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee & Payroll Management System (Offline)</title>
-    <!-- Offline Local Files (Download කරලා folder එකට දාගත්තම මේවා වැඩ කරනවා) -->
+    <!-- Offline Local Files -->
     <link href="./bootstrap.min.css" rel="stylesheet">
     <link href="./all.min.css" rel="stylesheet">
-    <!-- Online Fallback Links (Internet තියෙද්දී ඉබේම load වෙන්න) -->
-    <link href="https://jsdelivr.net" rel="stylesheet">
-    <link href="https://cloudflare.com" rel="stylesheet">
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .header-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
@@ -93,6 +90,7 @@
             </div>
         </form>
     </div>
+
     <!-- Table Section -->
     <div class="card p-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -183,23 +181,37 @@
         </tbody>
     </table>
 </div>
-<!-- Bootstrap JS Bundle (Offline Local & Online Fallback) -->
+
+<!-- Bootstrap JS Bundle (Offline Local) -->
 <script src="./bootstrap.bundle.min.js"></script>
-<script src="https://jsdelivr.net"></script>
-
 <script>
-    // Offline LocalStorage Database
-    let employees = JSON.parse(localStorage.getItem('offline_employees')) || {};
+    const { ipcRenderer } = require('electron');
+    let employees = {};
 
-    function syncStorage() {
-        localStorage.setItem('offline_employees', JSON.stringify(employees));
+    // D: / C: Drive එකෙන් Data Load කිරීම
+    async function initData() {
+        const loadedData = await ipcRenderer.invoke('load-data', 'employees');
+        if (Array.isArray(loadedData)) {
+            employees = {};
+        } else {
+            employees = loadedData || {};
+        }
+        renderTable();
+    }
+
+    // D: / C: Drive එකට Data Save කිරීම
+    async function syncStorage() {
+        const result = await ipcRenderer.invoke('save-data', 'employees', employees);
+        if (!result.success) {
+            alert('දත්ත සුරැකීමේදී දෝෂයක් ඇති විය: ' + result.error);
+        }
         renderTable();
     }
 
     // Initial Load
-    renderTable();
+    initData();
 
-    function saveEmployee(event) {
+    async function saveEmployee(event) {
         event.preventDefault();
         const id = document.getElementById('empId').value.trim();
         const name = document.getElementById('empName').value.trim();
@@ -219,7 +231,7 @@
         } else {
             employees[editKey] = empData;
         }
-        syncStorage();
+        await syncStorage();
         resetForm();
     }
 
@@ -267,12 +279,13 @@
             `;
         });
     }
+
     function openPrintModal() {
         const myModal = new bootstrap.Modal(document.getElementById('printModal'));
         myModal.show();
     }
 
-    function generateAndPrintSalaryList() {
+    async function generateAndPrintSalaryList() {
         const selectedMonthModalVal = document.getElementById('modalMonthSelect').value;
         document.getElementById('printMonthTitle').innerText = selectedMonthModalVal;
         
@@ -302,8 +315,9 @@
         const mNum = String(dateObj.getMonth() + 1).padStart(2, '0');
         const monthCode = `${yearStr}-${mNum}`;
 
-        // Fetch all attendance data from Offline LocalStorage
-        const allAttendance = JSON.parse(localStorage.getItem('offline_attendance')) || {};
+        // D: / C: Drive එකෙන් Attendance දත්ත ලබා ගැනීම
+        const loadedAtt = await ipcRenderer.invoke('load-data', 'attendance');
+        const allAttendance = Array.isArray(loadedAtt) ? {} : (loadedAtt || {});
 
         empList.forEach((emp) => {
             const empIdStr = String(emp.id || emp.key).trim();
@@ -376,10 +390,10 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function deleteEmployee(key) {
+    async function deleteEmployee(key) {
         if (confirm('ඔබට විශ්වාසද මෙම සේවක තොරතුරු ඉවත් කිරීමට අවශ්‍ය බව?')) {
             delete employees[key];
-            syncStorage();
+            await syncStorage();
         }
     }
 
